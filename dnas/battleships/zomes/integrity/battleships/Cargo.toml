@@ -1,0 +1,18 @@
+[package]
+name = "battleships_integrity"
+version = "0.0.1"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+name = "battleships_integrity"
+
+[dependencies]
+hdi = { workspace = true }
+
+serde = { workspace = true }
+
+ark-groth16 = "0.4.0"
+ark-ff = "0.4.2"
+ark-bn254 = "0.4.0"
+serde_json = "*"

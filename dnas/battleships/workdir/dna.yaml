@@ -1,0 +1,19 @@
+---
+manifest_version: "1"
+name: battleships
+integrity:
+  network_seed: ~
+  properties: ~
+  origin_time: 1690818662616050
+  zomes:
+    - name: battleships_integrity
+      hash: ~
+      bundled: "../../../target/wasm32-unknown-unknown/release/battleships_integrity.wasm"
+      dependencies: ~
+coordinator:
+  zomes:
+    - name: battleships
+      hash: ~
+      bundled: "../../../target/wasm32-unknown-unknown/release/battleships.wasm"
+      dependencies:
+        - name: battleships_integrity

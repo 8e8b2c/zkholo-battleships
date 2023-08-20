@@ -7,12 +7,20 @@ import {
 } from '@holochain/client';
 import { provide } from '@lit-labs/context';
 import '@material/mwc-circular-progress';
+import '@material/mwc-button';
+import '@material/mwc-dialog';
 
 import { clientContext } from './contexts';
+import './battleships/battleships/new-game-dialog';
+import './battleships/battleships/game-dialog';
+import { NewGameDialog } from './battleships/battleships/new-game-dialog';
+import { GameDialog } from './battleships/battleships/game-dialog';
+import './battleships/battleships/invite-list';
 
 @customElement('holochain-app')
 export class HolochainApp extends LitElement {
   @state() loading = true;
+  @state() selectedGameInvite: ActionHash | undefined;
 
   @provide({ context: clientContext })
   @property({ type: Object })
@@ -25,6 +33,19 @@ export class HolochainApp extends LitElement {
     this.loading = false;
   }
 
+  showNewGameDialog() {
+    const dialog = this.shadowRoot?.getElementById(
+      'new-game-dialog'
+    ) as NewGameDialog;
+    dialog.show();
+  }
+
+  handleInviteSelect(e: CustomEvent) {
+    const dialog = this.shadowRoot?.getElementById('game-dialog') as GameDialog;
+    this.selectedGameInvite = e.detail.inviteHash;
+    dialog.show();
+  }
+
   render() {
     if (this.loading)
       return html`
@@ -32,27 +53,21 @@ export class HolochainApp extends LitElement {
       `;
 
     return html`
+      <new-game-dialog id="new-game-dialog"> </new-game-dialog>
+      <game-dialog .gameInviteHash=${this.selectedGameInvite} id="game-dialog">
+      </game-dialog>
       <main>
         <h1>Battleships</h1>
+        <mwc-button
+          raised
+          label="New Game"
+          @click=${this.showNewGameDialog}
+        ></mwc-button>
 
-        <div id="content" style="display: flex; flex-direction: column; flex: 1;">
-          <h2>EDIT ME! Add the components of your app here.</h2>
-          
-          <span>Look in the <code>ui/src/DNA/ZOME</code> folders for UI elements that are generated with <code>hc scaffold entry-type</code>, <code>hc scaffold collection</code> and <code>hc scaffold link-type</code> and add them here as appropriate.</span>
-        
-          <span>For example, if you have scaffolded a "todos" dna, a "todos" zome, a "todo_item" entry type, and a collection called "all_todos", you might want to add an element here to create and list your todo items, with the generated <code>ui/src/todos/todos/all-todos.ts</code> and <code>ui/src/todos/todos/create-todo.ts</code> elements.</span>
-          
-          <span>So, to use those elements here:</span>
-          <ol>
-            <li>Import the elements with:
-              <pre>
-import './todos/todos/all-todos';
-import './todos/todos/create-todo';
-              </pre>
-            </li>
-            <li>Replace this "EDIT ME!" section with <code>&lt;create-todo&gt;&lt;/create-todo&gt;&lt;all-todos&gt;&lt;/all-todos&gt;</code>.</li>
-          </ol>
-        </div>
+        <invite-list
+          @invite-select=${this.handleInviteSelect}
+          .recipient=${this.client.myPubKey}
+        ></invite-list>
       </main>
     `;
   }
