@@ -46,7 +46,8 @@ export class CreateGameInvite extends LitElement {
       throw new Error('opponent not set');
     }
     const gameInvite: GameInvite = {
-      opponent: this.opponent,
+      home_player: this.client.myPubKey,
+      away_player: this.opponent,
     };
 
     try {

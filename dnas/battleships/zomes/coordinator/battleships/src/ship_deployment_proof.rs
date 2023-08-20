@@ -12,6 +12,12 @@ pub fn create_ship_deployment_proof(
             "Could not find the newly created ShipDeploymentProof"
         ))),
     )?;
+    create_link(
+        ship_deployment_proof.invite,
+        ship_deployment_proof_hash,
+        LinkTypes::DeploymentProofs,
+        (),
+    )?;
     Ok(record)
 }
 #[hdk_extern]

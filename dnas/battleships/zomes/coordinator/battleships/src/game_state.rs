@@ -3,10 +3,11 @@ use hdk::prelude::*;
 
 use crate::{get_entry_for_record, ship_deployment::get_ship_deployments_for_invite};
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, SerializedBytes, Debug, Clone)]
 #[serde(tag = "type")]
 pub enum GameState {
-    AwaitingDeployment(AgentPubKey),
+    AwaitingHomeDeployment,
+    AwaitingAwayDeployment,
     AwaitingBothDeployments,
     GameStarted,
     Other,
@@ -31,17 +32,15 @@ pub fn get_game_state(game_invite_hash: ActionHash) -> ExternResult<GameState> {
             ))))
         }
     };
-    let home_player = record.action_hashed().author();
-    let away_player = &game_invite.opponent;
     let deployments = get_ship_deployments_for_invite(game_invite_action_hash)?;
     match deployments.len() {
         0 => return Ok(GameState::AwaitingBothDeployments),
         1 => {
             let deployer = deployments[0].action().author();
-            if deployer == home_player {
-                return Ok(GameState::AwaitingDeployment(away_player.clone()));
-            } else if deployer == away_player {
-                return Ok(GameState::AwaitingDeployment(home_player.clone()));
+            if deployer == &game_invite.home_player {
+                return Ok(GameState::AwaitingAwayDeployment);
+            } else if deployer == &game_invite.away_player {
+                return Ok(GameState::AwaitingHomeDeployment);
             } else {
                 return Err(wasm_error!(WasmErrorInner::Guest(String::from(
                     "Non player has deployed"

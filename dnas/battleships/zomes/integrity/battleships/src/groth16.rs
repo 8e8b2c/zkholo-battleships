@@ -3,6 +3,7 @@ use std::str::FromStr;
 use ark_bn254::{Bn254, Fq, Fq2, Fr, G1Affine, G2Affine};
 use ark_ff::Fp;
 use ark_groth16::{prepare_verifying_key, Groth16, Proof, VerifyingKey};
+use hdi::prelude::*;
 
 type G1Json = [String; 3];
 type G2Json = [[String; 2]; 3];
@@ -41,13 +42,17 @@ fn parse_vk_json(vk_json_str: &str) -> VerifyingKey<Bn254> {
     let vk_json: VkJson = serde_json::from_str(vk_json_str).expect("Badly formed vk");
     assert_eq!(vk_json.protocol.as_str(), "groth16");
     assert_eq!(vk_json.curve.as_str(), "bn128");
-    assert_eq!(vk_json.n_public, vk_json.vk_gamma_2.len() + 1);
     VerifyingKey {
         alpha_g1: parse_g1_unchecked(&vk_json.vk_alpha_1),
         beta_g2: parse_g2_unchecked(&vk_json.vk_beta_2),
         gamma_g2: parse_g2_unchecked(&vk_json.vk_gamma_2),
         delta_g2: parse_g2_unchecked(&vk_json.vk_delta_2),
-        gamma_abc_g1: vk_json.ic.iter().map(parse_g1_unchecked).collect(),
+        gamma_abc_g1: vk_json
+            .ic
+            .iter()
+            .take(vk_json.n_public + 1)
+            .map(parse_g1_unchecked)
+            .collect(),
     }
 }
 
@@ -71,10 +76,15 @@ fn parse_public_inputs(public_input_strs: &[&str]) -> Vec<Fr> {
         .collect()
 }
 
-pub fn verify(vk_json_str: &str, proof_str: &str, public_input_strs: &[&str]) -> bool {
+pub fn verify(
+    vk_json_str: &str,
+    proof_str: &str,
+    public_input_strs: &[&str],
+) -> ExternResult<bool> {
     let vk = parse_vk_json(vk_json_str);
     let pvk = prepare_verifying_key(&vk);
     let proof = parse_proof(proof_str);
     let public_inputs = parse_public_inputs(public_input_strs);
-    Groth16::<Bn254>::verify_proof(&pvk, &proof, &public_inputs).unwrap()
+    Groth16::<Bn254>::verify_proof(&pvk, &proof, &public_inputs)
+        .map_err(|_| wasm_error!(WasmErrorInner::Guest(String::from("Groth16 error"))))
 }

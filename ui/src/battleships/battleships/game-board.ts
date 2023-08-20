@@ -7,8 +7,9 @@ import '@material/mwc-icon-button';
 import { Snackbar } from '@material/mwc-snackbar';
 
 import { clientContext } from '../../contexts';
+import { BOARD_SIZE } from './constants';
 
-export type CellFill = 'none' | 'ship' | 'miss' | 'hit' | 'target';
+export type CellFill = 'none' | 'ship' | 'miss' | 'hit' | 'target' | 'invalid';
 
 @customElement('game-board')
 export class CopyAgentPubKey extends LitElement {
@@ -20,6 +21,16 @@ export class CopyAgentPubKey extends LitElement {
   handleCellClick(x: number, y: number) {
     this.dispatchEvent(
       new CustomEvent('cell-click', {
+        detail: { x, y },
+        bubbles: true,
+        composed: true,
+      })
+    );
+  }
+
+  handleCellHover(x: number, y: number) {
+    this.dispatchEvent(
+      new CustomEvent('cell-hover', {
         detail: { x, y },
         bubbles: true,
         composed: true,
@@ -47,6 +58,10 @@ export class CopyAgentPubKey extends LitElement {
         </div>`;
       case 'target':
         return html`<div>?</div>`;
+      case 'invalid':
+        return html`<div
+          style="width: 100%; height: 100%; background-color: red"
+        ></div>`;
       default:
         return html`<div></div>`;
     }
@@ -54,14 +69,16 @@ export class CopyAgentPubKey extends LitElement {
 
   render() {
     return html` <div style="aspect-ratio: 1; width: 100%;">
-      ${range(10).map(
+      ${range(BOARD_SIZE).map(
         y =>
           html`<div style="width: 100%; height: 10%;">
-            ${range(10).map(
+            ${range(BOARD_SIZE).map(
               x =>
                 // eslint-disable-next-line lit-a11y/click-events-have-key-events
                 html`<div
                   @click=${() => this.handleCellClick(x, y)}
+                  @mouseover=${() => this.handleCellHover(x, y)}
+                  @focus=${() => this.handleCellHover(x, y)}
                   style="height: 100%; width: 10%; float: left;"
                 >
                   ${this.renderCellContent(x, y)}

@@ -20,7 +20,7 @@ pub enum EntryTypes {
 #[hdk_link_types]
 pub enum LinkTypes {
     Invites,
-    Placements,
+    DeploymentProofs,
     Game,
 }
 #[hdk_extern]
@@ -144,8 +144,8 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
                 validate_create_link_invites(action, base_address, target_address, tag)
             }
             LinkTypes::Game => validate_create_link_game(action, base_address, target_address, tag),
-            LinkTypes::Placements => {
-                validate_create_link_placement(action, base_address, target_address, tag)
+            LinkTypes::DeploymentProofs => {
+                validate_create_link_deployment_proof(action, base_address, target_address, tag)
             }
         },
         FlatOp::RegisterDeleteLink { .. } => Ok(ValidateCallbackResult::Invalid(String::from(
@@ -369,8 +369,8 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
                 LinkTypes::Game => {
                     validate_create_link_game(action, base_address, target_address, tag)
                 }
-                LinkTypes::Placements => {
-                    validate_create_link_placement(action, base_address, target_address, tag)
+                LinkTypes::DeploymentProofs => {
+                    validate_create_link_deployment_proof(action, base_address, target_address, tag)
                 }
             },
             OpRecord::DeleteLink { .. } => Ok(ValidateCallbackResult::Invalid(

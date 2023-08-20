@@ -46,7 +46,8 @@ export type EntryTypes =
   | ({ type: 'GameInvite' } & GameInvite);
 
 export interface GameInvite {
-  opponent: AgentPubKey;
+  home_player: AgentPubKey;
+  away_player: AgentPubKey;
 }
 
 export interface Ship {
@@ -56,13 +57,12 @@ export interface Ship {
 }
 
 export interface ShipDeployment {
-  invite: EntryHash;
-
   ships: Ship[];
 }
 
 export interface ShipDeploymentProof {
-  private_entry: EntryHash;
+  invite: ActionHash;
+  private_entry: ActionHash;
 
   commitment: string;
 
@@ -71,6 +71,7 @@ export interface ShipDeploymentProof {
 
 export type GameState =
   | { type: 'AwaitingBothDeployments' }
-  | { type: 'AwaitingDeployment' }
+  | { type: 'AwaitingHomeDeployment' }
+  | { type: 'AwaitingAwayDeployment' }
   | { type: 'GameStarted' }
   | { type: 'Other' };

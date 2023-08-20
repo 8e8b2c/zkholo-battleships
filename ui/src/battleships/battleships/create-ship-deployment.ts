@@ -24,6 +24,20 @@ import { CellFill } from './game-board';
 
 import circuitWasm from './circuits/create/create_js/create.wasm?url';
 import circuitZkey from './circuits/create/create_0001.zkey?url';
+import {
+  ShipLabel,
+  BOARD_SIZE,
+  SHIP_SIZES_ENTRIES,
+  SHIP_SIZE_TO_LABEL,
+} from './constants';
+
+interface Ships {
+  '5'?: Ship;
+  '4'?: Ship;
+  '3_a'?: Ship;
+  '3_b'?: Ship;
+  '2'?: Ship;
+}
 
 @customElement('create-ship-deployment')
 export class CreateShipDeployment extends LitElement {
@@ -34,13 +48,16 @@ export class CreateShipDeployment extends LitElement {
   gameInviteHash!: ActionHash;
 
   @state()
-  ships: {
-    '5'?: Ship;
-    '4'?: Ship;
-    '3_a'?: Ship;
-    '3_b'?: Ship;
-    '2'?: Ship;
-  } = {};
+  ships: Ships = {};
+
+  @state()
+  activeShip: ShipLabel | undefined;
+
+  @state()
+  cursor: { x: number; y: number } | undefined;
+
+  @state()
+  horizontal = false;
 
   firstUpdated() {
     if (this.gameInviteHash === undefined) {
@@ -55,46 +72,49 @@ export class CreateShipDeployment extends LitElement {
     }
   }
 
-  changeShips(e: InputEvent) {
-    // const elem = e.target as TextArea;
-    // try {
-    //   this.ships = JSON.parse(elem.value);
-    // } catch (error) {
-    //   // eslint-disable-next-line
-    //   console.error(error);
-    //   this.ships = [];
-    // }
-    this.ships = [
-      { x: 0, y: 0, horizontal: false },
-      { x: 1, y: 0, horizontal: false },
-      { x: 2, y: 0, horizontal: false },
-      { x: 3, y: 0, horizontal: false },
-      { x: 4, y: 0, horizontal: false },
-    ];
-  }
-
-  isShipDeploymentValid() {
-    if (this.ships.length !== 5) return false;
-    const board = Array.from({ length: 10 }, () =>
-      Array.from({ length: 10 }, () => false)
-    );
-    const shipSizes = [5, 4, 3, 3, 2];
-    for (let i = 0; i < 5; i += 1) {
-      const shipSize = shipSizes[i];
-      const ship = this.ships[i];
-      for (let j = 0; j < shipSize; j += 1) {
-        const { x, y } = ship.horizontal
-          ? { x: ship.x + j, y: ship.y }
-          : { x: ship.x, y: ship.y + j };
-        if (board[x][y]) return false;
-        board[x][y] = true;
-      }
+  // Returns true if all fill attempts are valid
+  fillAndCheckCells(board: boolean[][], ship: Ship, shipSize: number) {
+    for (let j = 0; j < shipSize; j += 1) {
+      const { x, y } = ship.horizontal
+        ? { x: ship.x + j, y: ship.y }
+        : { x: ship.x, y: ship.y + j };
+      if (x >= BOARD_SIZE || y >= BOARD_SIZE) return false;
+      if (board[x][y]) return false;
+      // eslint-disable-next-line no-param-reassign
+      board[x][y] = true;
     }
     return true;
   }
 
+  boardWithFill<T>(fill: T) {
+    return Array.from({ length: BOARD_SIZE }, () =>
+      Array.from({ length: BOARD_SIZE }, () => fill)
+    );
+  }
+
+  isShipDeploymentValid() {
+    const board = this.boardWithFill(false);
+    const shipIsValid = (shipSize: number, ship?: Ship) => {
+      if (!ship) return false;
+      return this.fillAndCheckCells(board, ship, shipSize);
+    };
+    return (
+      shipIsValid(5, this.ships[5]) &&
+      shipIsValid(4, this.ships[4]) &&
+      shipIsValid(3, this.ships['3_a']) &&
+      shipIsValid(3, this.ships['3_b']) &&
+      shipIsValid(2, this.ships[2])
+    );
+  }
+
   async provePlacement() {
-    const ships = this.ships.map(ship => [
+    const ships = [
+      this.ships['5']!,
+      this.ships['4']!,
+      this.ships['3_a']!,
+      this.ships['3_b']!,
+      this.ships['2']!,
+    ].map(ship => [
       ship.x.toString(),
       ship.y.toString(),
       ship.horizontal ? '1' : '0',
@@ -126,8 +146,13 @@ export class CreateShipDeployment extends LitElement {
       const { proofStr, commitment } = await this.provePlacement();
 
       const shipDeployment: ShipDeployment = {
-        invite: this.gameInviteHash,
-        ships: this.ships,
+        ships: [
+          this.ships['5']!,
+          this.ships['4']!,
+          this.ships['3_a']!,
+          this.ships['3_b']!,
+          this.ships['2']!,
+        ],
       };
       const privateRecord: Record = await this.client.callZome({
         cap_secret: null,
@@ -148,6 +173,7 @@ export class CreateShipDeployment extends LitElement {
       );
 
       const shipDeploymentProof: ShipDeploymentProof = {
+        invite: this.gameInviteHash,
         private_entry: privateRecord.signed_action.hashed.hash,
         commitment,
         proof: proofStr,
@@ -170,6 +196,10 @@ export class CreateShipDeployment extends LitElement {
         })
       );
     } catch (e: any) {
+      // eslint-disable-next-line
+      console.error(e);
+      // eslint-disable-next-line
+      console.error('data', e?.data?.data);
       const errorSnackbar = this.shadowRoot?.getElementById(
         'create-error'
       ) as Snackbar;
@@ -178,22 +208,79 @@ export class CreateShipDeployment extends LitElement {
     }
   }
 
-  shipsAsCells() {
-    const cells: CellFill[][] = Array.from({ length: 10 }, () =>
-      Array.from({ length: 10 }, () => 'none')
+  liftShip(label: ShipLabel) {
+    this.ships[label] = undefined;
+    this.activeShip = label;
+  }
+
+  handleCellHover(e: CustomEvent) {
+    const { x, y } = e.detail;
+    this.cursor = { x, y };
+  }
+
+  handleCellClick(e: CustomEvent) {
+    if (!this.activeShip) return;
+    const { x, y } = e.detail;
+    const ship: Ship = { x, y, horizontal: this.horizontal };
+    if (!this.positionIsValid(this.activeShip, ship)) return;
+    this.ships[this.activeShip] = ship;
+    this.activeShip = undefined;
+  }
+
+  handleHorizontalToggle() {
+    this.horizontal = !this.horizontal;
+  }
+
+  positionIsValid(labelToCheck: ShipLabel, ship: Ship) {
+    const cells = this.boardWithFill(false);
+    for (const [label, shipSize] of SHIP_SIZES_ENTRIES) {
+      const existingShip = this.ships[label];
+      if (existingShip) this.fillAndCheckCells(cells, existingShip, shipSize);
+    }
+    return this.fillAndCheckCells(
+      cells,
+      ship,
+      SHIP_SIZE_TO_LABEL[labelToCheck]
     );
-    const shipSizes = [5, 4, 3, 3, 2];
-    for (let i = 0; i < 5; i += 1) {
-      const shipSize = shipSizes[i];
-      const ship = this.ships[i];
-      for (let j = 0; j < shipSize; j += 1) {
-        const { x, y } = ship.horizontal
-          ? { x: ship.x + j, y: ship.y }
-          : { x: ship.x, y: ship.y + j };
-        cells[x][y] = 'ship';
+  }
+
+  shipsAsCells() {
+    const cells = this.boardWithFill('none' as CellFill);
+
+    const getShipAndFill = (
+      label: ShipLabel
+    ): { ship: Ship | undefined; fill: CellFill } => {
+      if (this.activeShip === label) {
+        if (!this.cursor) return { ship: undefined, fill: 'none' };
+        const ship = { ...this.cursor, horizontal: this.horizontal };
+        const fill = this.positionIsValid(label, ship) ? 'ship' : 'invalid';
+        return { ship, fill };
+      }
+      return { ship: this.ships[label], fill: 'ship' };
+    };
+
+    for (const [label, shipSize] of SHIP_SIZES_ENTRIES) {
+      const { ship, fill } = getShipAndFill(label);
+      if (ship) {
+        for (let j = 0; j < shipSize; j += 1) {
+          const { x, y } = ship.horizontal
+            ? { x: ship.x + j, y: ship.y }
+            : { x: ship.x, y: ship.y + j };
+          if (x < BOARD_SIZE && y < BOARD_SIZE) {
+            cells[x][y] = fill;
+          }
+        }
       }
     }
     return cells;
+  }
+
+  renderShipSelect(label: ShipLabel) {
+    return html`<mwc-button
+      label=${label}
+      @click=${() => this.liftShip(label)}
+      .disabled=${this.activeShip === label}
+    ></mwc-button>`;
   }
 
   render() {
@@ -201,7 +288,20 @@ export class CreateShipDeployment extends LitElement {
 
       <div style="display: flex; flex-direction: column">
         <span style="font-size: 18px">Create Ship Placements</span>
-        <game-board .cells=${this.shipsAsCells()}></game-board>
+        <game-board
+          @cell-click=${this.handleCellClick}
+          @cell-hover=${this.handleCellHover}
+          .cells=${this.shipsAsCells()}
+        ></game-board>
+        <div>
+          ${this.renderShipSelect('5')} ${this.renderShipSelect('4')}
+          ${this.renderShipSelect('3_a')} ${this.renderShipSelect('3_b')}
+          ${this.renderShipSelect('2')}
+          <mwc-button
+            label="Rotate"
+            @click=${this.handleHorizontalToggle}
+          ></mwc-button>
+        </div>
         <mwc-button
           raised
           label="Create Ship Placements"

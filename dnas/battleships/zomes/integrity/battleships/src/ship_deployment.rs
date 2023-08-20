@@ -8,7 +8,6 @@ pub struct Ship {
 #[hdk_entry_helper]
 #[derive(Clone, PartialEq)]
 pub struct ShipDeployment {
-    pub invite: ActionHash,
     pub ships: Vec<Ship>,
 }
 pub fn validate_create_ship_deployment(

@@ -4,6 +4,7 @@ use crate::groth16::verify;
 #[hdk_entry_helper]
 #[derive(Clone, PartialEq)]
 pub struct ShipDeploymentProof {
+    pub invite: ActionHash,
     pub private_entry: ActionHash,
     pub commitment: String,
     pub proof: String,
@@ -20,7 +21,7 @@ pub fn validate_create_ship_deployment_proof(
         VERIFICATION_KEY_JSON,
         ship_deployment_proof.proof.as_str(),
         &[ship_deployment_proof.commitment.as_str()],
-    ) {
+    )? {
         Ok(ValidateCallbackResult::Valid)
     } else {
         Ok(ValidateCallbackResult::Invalid(

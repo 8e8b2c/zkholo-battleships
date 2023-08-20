@@ -17,7 +17,6 @@ import '@material/mwc-list';
 import { clientContext } from '../../contexts';
 import { BattleshipsSignal } from './types';
 
-import './game-invite-detail';
 import './invite-list-item';
 
 @customElement('invite-list')
@@ -74,8 +73,6 @@ export class InviteList extends LitElement {
   }
 
   handleItemClick(inviteHash: ActionHash) {
-    // eslint-disable-next-line
-    console.log('item click');
     this.dispatchEvent(
       new CustomEvent('invite-select', {
         detail: { inviteHash },
@@ -85,7 +82,11 @@ export class InviteList extends LitElement {
     );
   }
 
-  renderList(hashes: Array<ActionHash>) {
+  renderRecords(records: Record[]) {
+    const hashes = mergeHashes(
+      this.signaledHashes,
+      records.map(r => r.signed_action.hashed.hash)
+    );
     if (hashes.length === 0)
       return html`<span>No game invites found for this recipient.</span>`;
 
@@ -97,34 +98,26 @@ export class InviteList extends LitElement {
               @click=${() => this.handleItemClick(hash)}
               .gameInviteHash=${hash}
             ></invite-list-item>`
-
-          // html`<game-invite-detail
-          //   .gameInviteHash=${hash}
-          //   style="margin-bottom: 16px;"
-          //   @game-invite-deleted=${() => {
-          //     this._fetchGameInvites.run();
-          //     this.signaledHashes = [];
-          //   }}
-          // ></game-invite-detail>`
         )}
       </mwc-list>
     `;
   }
 
+  renderLoading() {
+    return html`<div
+      style="display: flex; flex: 1; align-items: center; justify-content: center"
+    >
+      <mwc-circular-progress indeterminate></mwc-circular-progress>
+    </div>`;
+  }
+
   render() {
     return this._fetchGameInvites.render({
-      pending: () => html`<div
-        style="display: flex; flex: 1; align-items: center; justify-content: center"
-      >
-        <mwc-circular-progress indeterminate></mwc-circular-progress>
-      </div>`,
-      complete: records =>
-        this.renderList(
-          mergeHashes(
-            this.signaledHashes,
-            records.map(r => r.signed_action.hashed.hash)
-          )
-        ),
+      pending: () =>
+        this._fetchGameInvites.value
+          ? this.renderRecords(this._fetchGameInvites.value)
+          : this.renderLoading(),
+      complete: records => this.renderRecords(records),
       error: (e: any) =>
         html`<span>Error fetching the game invites: ${e.data.data}.</span>`,
     });

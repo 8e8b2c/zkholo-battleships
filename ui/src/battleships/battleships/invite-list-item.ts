@@ -43,7 +43,7 @@ export class InviteListItem extends LitElement {
   firstUpdated() {
     if (this.gameInviteHash === undefined) {
       throw new Error(
-        `The gameInviteHash property is required for the game-invite-detail element`
+        `The gameInviteHash property is required for the invite-list-item element`
       );
     }
   }
@@ -68,13 +68,11 @@ export class InviteListItem extends LitElement {
   // }
 
   renderDetail(record: Record) {
-    const gameInvite = decode(
+    const _gameInvite = decode(
       (record.entry as any).Present.entry
     ) as GameInvite;
 
-    const opponentStr = encodeHashToBase64(gameInvite.opponent);
-    const opponentShort = `${opponentStr.substring(0, 10)}...`;
-    return html` <mwc-list-item>${opponentShort}</mwc-list-item> `;
+    return html` <mwc-list-item>A Game</mwc-list-item> `;
   }
 
   renderGameInvite(maybeRecord: Record | undefined) {
