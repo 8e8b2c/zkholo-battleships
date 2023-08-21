@@ -11,5 +11,6 @@ export const SHIP_SIZES_ENTRIES: [ShipLabel, number][] = [
 ];
 
 export const SHIP_LABELS = SHIP_SIZES_ENTRIES.map(([label]) => label);
+export const SHIP_SIZES = SHIP_SIZES_ENTRIES.map(([_, size]) => size);
 
 export const SHIP_SIZE_TO_LABEL = Object.fromEntries(SHIP_SIZES_ENTRIES);

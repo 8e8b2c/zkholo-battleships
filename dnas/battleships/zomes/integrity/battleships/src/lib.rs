@@ -1,10 +1,16 @@
+mod constants;
+mod groth16;
+pub mod hit_or_miss_proof;
+pub use hit_or_miss_proof::*;
 pub mod ship_deployment_proof;
 pub use ship_deployment_proof::*;
 pub mod ship_deployment;
 pub use ship_deployment::*;
 pub mod game_invite;
-mod groth16;
 pub use game_invite::*;
+pub mod game_transcript;
+pub use game_transcript::*;
+mod helpers;
 use hdi::prelude::*;
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(tag = "type")]
@@ -15,13 +21,17 @@ pub enum EntryTypes {
     #[entry_def(visibility = "private")]
     ShipDeployment(ShipDeployment),
     ShipDeploymentProof(ShipDeploymentProof),
+    GameTranscript(GameTranscript),
+    HitOrMissProof(HitOrMissProof),
 }
 #[derive(Serialize, Deserialize)]
 #[hdk_link_types]
 pub enum LinkTypes {
     Invites,
+    Deployment,
     DeploymentProofs,
-    Game,
+    GameTranscript,
+    GameTranscriptUpdates,
 }
 #[hdk_extern]
 pub fn genesis_self_check(_data: GenesisSelfCheckData) -> ExternResult<ValidateCallbackResult> {
@@ -51,6 +61,14 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
                         ship_deployment_proof,
                     )
                 }
+                EntryTypes::GameTranscript(game_transcript) => validate_create_game_transcript(
+                    EntryCreationAction::Create(action),
+                    game_transcript,
+                ),
+                EntryTypes::HitOrMissProof(hit_or_miss_proof) => validate_create_hit_or_miss_proof(
+                    EntryCreationAction::Create(action),
+                    hit_or_miss_proof,
+                ),
             },
             OpEntry::UpdateEntry {
                 app_entry, action, ..
@@ -68,6 +86,14 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
                         ship_deployment_proof,
                     )
                 }
+                EntryTypes::GameTranscript(game_transcript) => validate_create_game_transcript(
+                    EntryCreationAction::Update(action),
+                    game_transcript,
+                ),
+                EntryTypes::HitOrMissProof(hit_or_miss_proof) => validate_create_hit_or_miss_proof(
+                    EntryCreationAction::Update(action),
+                    hit_or_miss_proof,
+                ),
             },
             _ => Ok(ValidateCallbackResult::Valid),
         },
@@ -116,21 +142,9 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
                 original_action,
                 original_app_entry,
                 action,
-            } => match original_app_entry {
-                EntryTypes::GameInvite(game_invite) => {
-                    validate_delete_game_invite(action, original_action, game_invite)
-                }
-                EntryTypes::ShipDeployment(ship_deployment) => {
-                    validate_delete_ship_deployment(action, original_action, ship_deployment)
-                }
-                EntryTypes::ShipDeploymentProof(ship_deployment_proof) => {
-                    validate_delete_ship_deployment_proof(
-                        action,
-                        original_action,
-                        ship_deployment_proof,
-                    )
-                }
-            },
+            } => Ok(ValidateCallbackResult::Invalid(String::from(
+                "App entries cannot be deleted",
+            ))),
             _ => Ok(ValidateCallbackResult::Valid),
         },
         FlatOp::RegisterCreateLink {
@@ -143,7 +157,12 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
             LinkTypes::Invites => {
                 validate_create_link_invites(action, base_address, target_address, tag)
             }
-            LinkTypes::Game => validate_create_link_game(action, base_address, target_address, tag),
+            LinkTypes::GameTranscript => {
+                validate_create_link_game(action, base_address, target_address, tag)
+            }
+            LinkTypes::Deployment => {
+                validate_create_link_deployment(action, base_address, target_address, tag)
+            }
             LinkTypes::DeploymentProofs => {
                 validate_create_link_deployment_proof(action, base_address, target_address, tag)
             }
@@ -166,6 +185,14 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
                         ship_deployment_proof,
                     )
                 }
+                EntryTypes::GameTranscript(game_transcript) => validate_create_game_transcript(
+                    EntryCreationAction::Create(action),
+                    game_transcript,
+                ),
+                EntryTypes::HitOrMissProof(hit_or_miss_proof) => validate_create_hit_or_miss_proof(
+                    EntryCreationAction::Create(action),
+                    hit_or_miss_proof,
+                ),
             },
             OpRecord::UpdateEntry {
                 original_action_hash,
@@ -281,11 +308,65 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
                             Ok(result)
                         }
                     }
+                    EntryTypes::GameTranscript(game_transcript) => {
+                        let original_game_transcript: Option<GameTranscript> = original_record
+                            .entry()
+                            .to_app_option()
+                            .map_err(|e| wasm_error!(e))?;
+                        let original_game_transcript = match original_game_transcript {
+                            Some(game_transcript) => game_transcript,
+                            None => {
+                                return Ok(
+                                            ValidateCallbackResult::Invalid(
+                                                "The updated entry type must be the same as the original entry type"
+                                                    .to_string(),
+                                            ),
+                                        );
+                            }
+                        };
+                        validate_update_game_transcript(
+                            action,
+                            game_transcript,
+                            original_action,
+                            original_game_transcript,
+                        )
+                    }
+                    EntryTypes::HitOrMissProof(hit_or_miss_proof) => {
+                        let result = validate_create_hit_or_miss_proof(
+                            EntryCreationAction::Update(action.clone()),
+                            hit_or_miss_proof.clone(),
+                        )?;
+                        if let ValidateCallbackResult::Valid = result {
+                            let original_hit_or_miss_proof: Option<HitOrMissProof> =
+                                original_record
+                                    .entry()
+                                    .to_app_option()
+                                    .map_err(|e| wasm_error!(e))?;
+                            let original_hit_or_miss_proof = match original_hit_or_miss_proof {
+                                Some(hit_or_miss_proof) => hit_or_miss_proof,
+                                None => {
+                                    return Ok(
+                                            ValidateCallbackResult::Invalid(
+                                                "The updated entry type must be the same as the original entry type"
+                                                    .to_string(),
+                                            ),
+                                        );
+                                }
+                            };
+                            validate_update_hit_or_miss_proof(
+                                action,
+                                hit_or_miss_proof,
+                                original_action,
+                                original_hit_or_miss_proof,
+                            )
+                        } else {
+                            Ok(result)
+                        }
+                    }
                 }
             }
             OpRecord::DeleteEntry {
                 original_action_hash,
-                action,
                 ..
             } => {
                 let original_record = must_get_valid_record(original_action_hash)?;
@@ -321,7 +402,7 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
                         }
                     }
                 };
-                let original_app_entry = match EntryTypes::deserialize_from_type(
+                let _original_app_entry = match EntryTypes::deserialize_from_type(
                     app_entry_type.zome_index,
                     app_entry_type.entry_index,
                     entry,
@@ -336,25 +417,9 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
                             );
                     }
                 };
-                match original_app_entry {
-                    EntryTypes::GameInvite(original_game_invite) => {
-                        validate_delete_game_invite(action, original_action, original_game_invite)
-                    }
-                    EntryTypes::ShipDeployment(original_ship_deployment) => {
-                        validate_delete_ship_deployment(
-                            action,
-                            original_action,
-                            original_ship_deployment,
-                        )
-                    }
-                    EntryTypes::ShipDeploymentProof(original_ship_deployment_proof) => {
-                        validate_delete_ship_deployment_proof(
-                            action,
-                            original_action,
-                            original_ship_deployment_proof,
-                        )
-                    }
-                }
+                Ok(ValidateCallbackResult::Invalid(String::from(
+                    "App entries cannot be deleted",
+                )))
             }
             OpRecord::CreateLink {
                 base_address,
@@ -366,8 +431,11 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
                 LinkTypes::Invites => {
                     validate_create_link_invites(action, base_address, target_address, tag)
                 }
-                LinkTypes::Game => {
+                LinkTypes::GameTranscript => {
                     validate_create_link_game(action, base_address, target_address, tag)
+                }
+                LinkTypes::Deployment => {
+                    validate_create_link_deployment(action, base_address, target_address, tag)
                 }
                 LinkTypes::DeploymentProofs => {
                     validate_create_link_deployment_proof(action, base_address, target_address, tag)

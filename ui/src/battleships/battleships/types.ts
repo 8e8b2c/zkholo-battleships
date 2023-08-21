@@ -57,6 +57,7 @@ export interface Ship {
 }
 
 export interface ShipDeployment {
+  invite: ActionHash;
   ships: Ship[];
 }
 
@@ -75,3 +76,5 @@ export type GameState =
   | { type: 'AwaitingAwayDeployment' }
   | { type: 'GameStarted' }
   | { type: 'Other' };
+
+export type ViewerRole = 'home' | 'away' | 'spectator' | 'unknown';

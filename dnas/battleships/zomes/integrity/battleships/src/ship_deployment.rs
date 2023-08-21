@@ -8,6 +8,7 @@ pub struct Ship {
 #[hdk_entry_helper]
 #[derive(Clone, PartialEq)]
 pub struct ShipDeployment {
+    pub invite: ActionHash,
     pub ships: Vec<Ship>,
 }
 pub fn validate_create_ship_deployment(
@@ -46,14 +47,5 @@ pub fn validate_update_ship_deployment(
 ) -> ExternResult<ValidateCallbackResult> {
     Ok(ValidateCallbackResult::Invalid(String::from(
         "Ship Placements cannot be updated",
-    )))
-}
-pub fn validate_delete_ship_deployment(
-    _action: Delete,
-    _original_action: EntryCreationAction,
-    _original_ship_deployment: ShipDeployment,
-) -> ExternResult<ValidateCallbackResult> {
-    Ok(ValidateCallbackResult::Invalid(String::from(
-        "Ship Placements cannot be deleted",
     )))
 }

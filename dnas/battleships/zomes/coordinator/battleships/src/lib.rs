@@ -1,5 +1,6 @@
 pub mod game_invite;
 pub mod game_state;
+pub mod game_transcript;
 pub mod invites;
 pub mod ship_deployment;
 pub mod ship_deployment_proof;

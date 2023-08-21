@@ -1,19 +1,10 @@
 import { LitElement, html } from 'lit';
 import { state, customElement, property } from 'lit/decorators.js';
-import {
-  InstalledCell,
-  ActionHash,
-  Record,
-  AgentPubKey,
-  EntryHash,
-  AppAgentClient,
-  DnaHash,
-} from '@holochain/client';
+import { ActionHash, Record, AppAgentClient } from '@holochain/client';
 import { consume } from '@lit-labs/context';
 import '@material/mwc-button';
 import '@material/mwc-textarea';
 import '@material/mwc-snackbar';
-import { TextArea } from '@material/mwc-textarea';
 import { Snackbar } from '@material/mwc-snackbar';
 import { groth16 } from 'snarkjs';
 
@@ -30,6 +21,7 @@ import {
   SHIP_SIZES_ENTRIES,
   SHIP_SIZE_TO_LABEL,
 } from './constants';
+import { boardWithFill } from './helpers';
 
 interface Ships {
   '5'?: Ship;
@@ -86,14 +78,8 @@ export class CreateShipDeployment extends LitElement {
     return true;
   }
 
-  boardWithFill<T>(fill: T) {
-    return Array.from({ length: BOARD_SIZE }, () =>
-      Array.from({ length: BOARD_SIZE }, () => fill)
-    );
-  }
-
   isShipDeploymentValid() {
-    const board = this.boardWithFill(false);
+    const board = boardWithFill(false);
     const shipIsValid = (shipSize: number, ship?: Ship) => {
       if (!ship) return false;
       return this.fillAndCheckCells(board, ship, shipSize);
@@ -146,6 +132,7 @@ export class CreateShipDeployment extends LitElement {
       const { proofStr, commitment } = await this.provePlacement();
 
       const shipDeployment: ShipDeployment = {
+        invite: this.gameInviteHash,
         ships: [
           this.ships['5']!,
           this.ships['4']!,
@@ -163,7 +150,7 @@ export class CreateShipDeployment extends LitElement {
       });
 
       this.dispatchEvent(
-        new CustomEvent('ship-placements-created', {
+        new CustomEvent('ship-deployment-created', {
           composed: true,
           bubbles: true,
           detail: {
@@ -187,7 +174,7 @@ export class CreateShipDeployment extends LitElement {
       });
 
       this.dispatchEvent(
-        new CustomEvent('ship-placements-proof-created', {
+        new CustomEvent('ship-deployment-proof-created', {
           composed: true,
           bubbles: true,
           detail: {
@@ -232,7 +219,7 @@ export class CreateShipDeployment extends LitElement {
   }
 
   positionIsValid(labelToCheck: ShipLabel, ship: Ship) {
-    const cells = this.boardWithFill(false);
+    const cells = boardWithFill(false);
     for (const [label, shipSize] of SHIP_SIZES_ENTRIES) {
       const existingShip = this.ships[label];
       if (existingShip) this.fillAndCheckCells(cells, existingShip, shipSize);
@@ -245,7 +232,7 @@ export class CreateShipDeployment extends LitElement {
   }
 
   shipsAsCells() {
-    const cells = this.boardWithFill('none' as CellFill);
+    const cells = boardWithFill('none' as CellFill);
 
     const getShipAndFill = (
       label: ShipLabel

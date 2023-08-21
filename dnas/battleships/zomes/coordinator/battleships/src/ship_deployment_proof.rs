@@ -26,3 +26,17 @@ pub fn get_ship_deployment_proof(
 ) -> ExternResult<Option<Record>> {
     get(ship_deployment_proof_hash, GetOptions::default())
 }
+
+#[hdk_extern]
+pub fn get_ship_deployment_proofs_for_invite(
+    game_invite_action_hash: ActionHash,
+) -> ExternResult<Vec<Record>> {
+    let links = get_links(game_invite_action_hash, LinkTypes::DeploymentProofs, None)?;
+    let get_input: Vec<GetInput> = links
+        .into_iter()
+        .map(|link| GetInput::new(ActionHash::from(link.target).into(), GetOptions::default()))
+        .collect();
+    let records = HDK.with(|hdk| hdk.borrow().get(get_input))?;
+    let records: Vec<Record> = records.into_iter().flatten().collect();
+    Ok(records)
+}

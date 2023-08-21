@@ -1,24 +1,15 @@
-import { LitElement, PropertyValueMap, html } from 'lit';
+import { LitElement, html } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
-import {
-  ActionHash,
-  AppAgentClient,
-  Record,
-  encodeHashToBase64,
-} from '@holochain/client';
+import { ActionHash, AppAgentClient, Record } from '@holochain/client';
 import { decode } from '@msgpack/msgpack';
 import { Task } from '@lit-labs/task';
 import { consume } from '@lit-labs/context';
-import '@material/mwc-snackbar';
-import '@material/mwc-icon-button';
-import { Snackbar } from '@material/mwc-snackbar';
 import { Dialog } from '@material/mwc-dialog';
 
 import { clientContext } from '../../contexts';
 import './create-game-invite';
-import { GameInvite, GameState } from './types';
-
-type Role = 'home' | 'away' | 'spectator' | 'unknown';
+import './game-board-pair';
+import { GameInvite, GameState, ViewerRole } from './types';
 
 @customElement('game-dialog')
 export class GameDialog extends LitElement {
@@ -60,7 +51,7 @@ export class GameDialog extends LitElement {
     dialog.show();
   }
 
-  async getRole(gameInviteHash: ActionHash): Promise<Role> {
+  async getRole(gameInviteHash: ActionHash): Promise<ViewerRole> {
     const record: Record | undefined = await this.client.callZome({
       cap_secret: null,
       role_name: 'battleships',
@@ -82,7 +73,7 @@ export class GameDialog extends LitElement {
     return 'spectator';
   }
 
-  renderGame({ gameState, role }: { gameState: GameState; role: Role }) {
+  renderGame({ gameState, role }: { gameState: GameState; role: ViewerRole }) {
     if (role === 'unknown') {
       return html`<span>Player unknown</span>`;
     }
@@ -95,7 +86,11 @@ export class GameDialog extends LitElement {
         .gameInviteHash=${this.gameInviteHash}
       ></create-ship-deployment>`;
     }
-    return html`<span>TODO</span>`;
+    return html`<game-board-pair
+      .gameInviteHash=${this.gameInviteHash}
+      .viewerRole=${role}
+      .gameState=${gameState}
+    ></game-board-pair>`;
   }
 
   renderLoading() {
@@ -123,7 +118,6 @@ export class GameDialog extends LitElement {
 
   render() {
     return html`
-      <mwc-snackbar id="snackbar" leading></mwc-snackbar>
       <mwc-dialog id="dialog"> ${this.renderContent()} </mwc-dialog>
     `;
   }

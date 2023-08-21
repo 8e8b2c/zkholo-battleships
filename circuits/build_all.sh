@@ -7,6 +7,7 @@ mkdir -p build
 CIRCUITS="create move"
 
 for circuit in $CIRCUITS; do
+  echo "Building $circuit"
   rm -rf build/$circuit
   mkdir build/$circuit
 
@@ -18,5 +19,5 @@ for circuit in $CIRCUITS; do
   npx snarkjs groth16 setup ${circuit}.r1cs pot12_final.ptau ${circuit}_0000.zkey
   npx snarkjs zkey contribute ${circuit}_0000.zkey ${circuit}_0001.zkey --name="Second contribution" -e="$(openssl rand -base64 20)"
   npx snarkjs zkey export verificationkey ${circuit}_0001.zkey verification_key.json
-  cd ..
+  cd ../..
 done

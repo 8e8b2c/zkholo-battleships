@@ -1,7 +1,7 @@
 use battleships_integrity::EntryTypes;
 use hdk::prelude::*;
 
-use crate::{get_entry_for_record, ship_deployment::get_ship_deployments_for_invite};
+use crate::{get_entry_for_record, ship_deployment_proof::get_ship_deployment_proofs_for_invite};
 
 #[derive(Serialize, Deserialize, SerializedBytes, Debug, Clone)]
 #[serde(tag = "type")]
@@ -32,7 +32,7 @@ pub fn get_game_state(game_invite_hash: ActionHash) -> ExternResult<GameState> {
             ))))
         }
     };
-    let deployments = get_ship_deployments_for_invite(game_invite_action_hash)?;
+    let deployments = get_ship_deployment_proofs_for_invite(game_invite_action_hash)?;
     match deployments.len() {
         0 => return Ok(GameState::AwaitingBothDeployments),
         1 => {

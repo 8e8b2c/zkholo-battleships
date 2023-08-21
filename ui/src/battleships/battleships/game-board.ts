@@ -1,10 +1,9 @@
 import { LitElement, html } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
-import { AppAgentClient, encodeHashToBase64 } from '@holochain/client';
+import { AppAgentClient } from '@holochain/client';
 import { consume } from '@lit-labs/context';
 import '@material/mwc-snackbar';
 import '@material/mwc-icon-button';
-import { Snackbar } from '@material/mwc-snackbar';
 
 import { clientContext } from '../../contexts';
 import { BOARD_SIZE } from './constants';
@@ -12,7 +11,7 @@ import { BOARD_SIZE } from './constants';
 export type CellFill = 'none' | 'ship' | 'miss' | 'hit' | 'target' | 'invalid';
 
 @customElement('game-board')
-export class CopyAgentPubKey extends LitElement {
+export class GameBoard extends LitElement {
   @consume({ context: clientContext })
   client!: AppAgentClient;
 

@@ -76,6 +76,17 @@ pub fn validate_create_link_game(
     Ok(ValidateCallbackResult::Valid)
 }
 
+pub fn validate_create_link_deployment(
+    _action: CreateLink,
+    _base_address: AnyLinkableHash,
+    target_address: AnyLinkableHash,
+    _tag: LinkTag,
+) -> ExternResult<ValidateCallbackResult> {
+    let action_hash = ActionHash::from(target_address);
+    let _record = must_get_valid_record(action_hash)?;
+    // Private entry can't be validated by peers
+    Ok(ValidateCallbackResult::Valid)
+}
 pub fn validate_create_link_deployment_proof(
     _action: CreateLink,
     _base_address: AnyLinkableHash,
@@ -84,7 +95,7 @@ pub fn validate_create_link_deployment_proof(
 ) -> ExternResult<ValidateCallbackResult> {
     let action_hash = ActionHash::from(target_address);
     let record = must_get_valid_record(action_hash)?;
-    let _game_invite: crate::ShipDeploymentProof = record
+    let _ship_deployment_proof: crate::ShipDeploymentProof = record
         .entry()
         .to_app_option()
         .map_err(|e| wasm_error!(e))?
