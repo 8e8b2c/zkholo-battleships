@@ -110,34 +110,8 @@ pub fn validate_update_game_transcript(
             ))
         }
     };
-
-    // Infer who's turn it should be
-    // Sequence of permitted steps is:
-    // 1. away fires shot (included in create too)
-    // 2. home adds hit/miss proof
-    // 3. home fires shot
-    // 4. away adds hit/miss proof
-    // 5. repeat steps 1-4 until game ends (17 hits made by one player)
-    // Therefore the step (1-4) can be inferred from shot & proof vec lengths
-    let away_shot_len = original_game_transcript.away_player_shots.len();
-    let home_proof_len = original_game_transcript
-        .home_player_hit_or_miss_proofs
-        .len();
-    let home_shot_len = original_game_transcript.home_player_shots.len();
-    let away_proof_len = original_game_transcript
-        .away_player_hit_or_miss_proofs
-        .len();
-    let baseline = std::cmp::min(
-        std::cmp::min(home_shot_len, away_shot_len),
-        std::cmp::min(home_proof_len, away_proof_len),
-    );
-    match (
-        away_shot_len - baseline,
-        home_proof_len - baseline,
-        home_shot_len - baseline,
-        away_proof_len - baseline,
-    ) {
-        (0, 0, 0, 0) => {
+    match get_game_turn(&original_game_transcript) {
+        GameTurn::AwayShot => {
             // All lists are the same length therefore we're at the beginning of the cycle.
             // Step 1 - Away player should be adding a shot
             if action.author != game_invite.away_player {
@@ -145,7 +119,7 @@ pub fn validate_update_game_transcript(
             }
             validate_add_shot(game_transcript, original_game_transcript, false)
         }
-        (1, 0, 0, 0) => {
+        GameTurn::HomeProof => {
             // Step 2 - Home player should be adding a proof
             if action.author != game_invite.home_player {
                 return Ok(ValidateCallbackResult::Invalid("Home player's turn".into()));
@@ -157,14 +131,14 @@ pub fn validate_update_game_transcript(
                 true,
             )
         }
-        (1, 1, 0, 0) => {
+        GameTurn::HomeShot => {
             // Step 3 - Home player should be adding a shot
             if action.author != game_invite.away_player {
                 return Ok(ValidateCallbackResult::Invalid("Away player's turn".into()));
             }
             validate_add_shot(game_transcript, original_game_transcript, true)
         }
-        (1, 1, 1, 0) => {
+        GameTurn::AwayProof => {
             // Step 4 - Away player should be adding a proof
             if action.author != game_invite.away_player {
                 return Ok(ValidateCallbackResult::Invalid("Home player's turn".into()));
@@ -176,7 +150,7 @@ pub fn validate_update_game_transcript(
                 false,
             )
         }
-        _ => {
+        GameTurn::Corrupt => {
             // This should never happen. If it does that means a corrupt state previously made it
             // through validation.
             Ok(ValidateCallbackResult::Invalid(
@@ -198,6 +172,49 @@ pub fn validate_delete_game_transcript(
 
 fn shot_is_on_board(shot: &Shot) -> bool {
     shot.x < BOARD_SIZE && shot.y < BOARD_SIZE
+}
+
+#[derive(Serialize, Deserialize, SerializedBytes, Debug, Clone)]
+#[serde(tag = "type")]
+pub enum GameTurn {
+    AwayShot,
+    HomeProof,
+    HomeShot,
+    AwayProof,
+    Corrupt,
+}
+
+pub fn get_game_turn(game_transcript: &GameTranscript) -> GameTurn {
+    // Infer who's turn it should be
+    // Sequence of permitted steps is:
+    // 1. away fires shot (included in create too)
+    // 2. home adds hit/miss proof
+    // 3. home fires shot
+    // 4. away adds hit/miss proof
+    // 5. repeat steps 1-4 until game ends (17 hits made by one player)
+    // Therefore the step (1-4) can be inferred from shot & proof vec lengths
+    let away_shot_len = game_transcript.away_player_shots.len();
+    let home_proof_len = game_transcript.home_player_hit_or_miss_proofs.len();
+    let home_shot_len = game_transcript.home_player_shots.len();
+    let away_proof_len = game_transcript.away_player_hit_or_miss_proofs.len();
+    let baseline = std::cmp::min(
+        std::cmp::min(home_shot_len, away_shot_len),
+        std::cmp::min(home_proof_len, away_proof_len),
+    );
+    match (
+        away_shot_len - baseline,
+        home_proof_len - baseline,
+        home_shot_len - baseline,
+        away_proof_len - baseline,
+    ) {
+        // All lists are the same length therefore we're at the beginning of the cycle.
+        (0, 0, 0, 0) => GameTurn::AwayShot,
+        (1, 0, 0, 0) => GameTurn::HomeProof,
+        (1, 1, 0, 0) => GameTurn::HomeShot,
+        (1, 1, 1, 0) => GameTurn::AwayProof,
+        // This should never happen
+        _ => GameTurn::Corrupt,
+    }
 }
 
 fn additional_shot_is_valid(existing_shots: &[Shot], shot: &Shot) -> bool {
@@ -297,5 +314,33 @@ fn validate_add_proof(
             if is_by_home_player { "home" } else { "away" }
         )));
     }
+    Ok(ValidateCallbackResult::Valid)
+}
+
+pub fn validate_create_link_game_transcript_updates(
+    _action: CreateLink,
+    base_address: AnyLinkableHash,
+    target_address: AnyLinkableHash,
+    _tag: LinkTag,
+) -> ExternResult<ValidateCallbackResult> {
+    let action_hash = ActionHash::from(base_address);
+    let record = must_get_valid_record(action_hash)?;
+    let _game_transcript: crate::GameTranscript = record
+        .entry()
+        .to_app_option()
+        .map_err(|e| wasm_error!(e))?
+        .ok_or(wasm_error!(WasmErrorInner::Guest(String::from(
+            "Linked action must reference an entry"
+        ))))?;
+    let action_hash = ActionHash::from(target_address);
+    let record = must_get_valid_record(action_hash)?;
+    let _game_transcript: crate::GameTranscript = record
+        .entry()
+        .to_app_option()
+        .map_err(|e| wasm_error!(e))?
+        .ok_or(wasm_error!(WasmErrorInner::Guest(String::from(
+            "Linked action must reference an entry"
+        ))))?;
+    // TODO: should we also validate the diff between the original record and ones that came between?
     Ok(ValidateCallbackResult::Valid)
 }

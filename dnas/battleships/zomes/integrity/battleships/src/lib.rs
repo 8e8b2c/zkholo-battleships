@@ -138,11 +138,7 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
             _ => Ok(ValidateCallbackResult::Valid),
         },
         FlatOp::RegisterDelete(delete_entry) => match delete_entry {
-            OpDelete::Entry {
-                original_action,
-                original_app_entry,
-                action,
-            } => Ok(ValidateCallbackResult::Invalid(String::from(
+            OpDelete::Entry { .. } => Ok(ValidateCallbackResult::Invalid(String::from(
                 "App entries cannot be deleted",
             ))),
             _ => Ok(ValidateCallbackResult::Valid),
@@ -158,7 +154,7 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
                 validate_create_link_invites(action, base_address, target_address, tag)
             }
             LinkTypes::GameTranscript => {
-                validate_create_link_game(action, base_address, target_address, tag)
+                validate_create_link_game_transcript(action, base_address, target_address, tag)
             }
             LinkTypes::Deployment => {
                 validate_create_link_deployment(action, base_address, target_address, tag)
@@ -166,6 +162,12 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
             LinkTypes::DeploymentProofs => {
                 validate_create_link_deployment_proof(action, base_address, target_address, tag)
             }
+            LinkTypes::GameTranscriptUpdates => validate_create_link_game_transcript_updates(
+                action,
+                base_address,
+                target_address,
+                tag,
+            ),
         },
         FlatOp::RegisterDeleteLink { .. } => Ok(ValidateCallbackResult::Invalid(String::from(
             "Links cannot be deleted",
@@ -432,7 +434,7 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
                     validate_create_link_invites(action, base_address, target_address, tag)
                 }
                 LinkTypes::GameTranscript => {
-                    validate_create_link_game(action, base_address, target_address, tag)
+                    validate_create_link_game_transcript(action, base_address, target_address, tag)
                 }
                 LinkTypes::Deployment => {
                     validate_create_link_deployment(action, base_address, target_address, tag)
@@ -440,6 +442,12 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
                 LinkTypes::DeploymentProofs => {
                     validate_create_link_deployment_proof(action, base_address, target_address, tag)
                 }
+                LinkTypes::GameTranscriptUpdates => validate_create_link_game_transcript_updates(
+                    action,
+                    base_address,
+                    target_address,
+                    tag,
+                ),
             },
             OpRecord::DeleteLink { .. } => Ok(ValidateCallbackResult::Invalid(
                 "Links cannot be deleted".to_string(),

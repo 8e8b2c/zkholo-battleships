@@ -58,7 +58,7 @@ pub fn validate_create_link_invites(
     Ok(ValidateCallbackResult::Valid)
 }
 
-pub fn validate_create_link_game(
+pub fn validate_create_link_game_transcript(
     _action: CreateLink,
     _base_address: AnyLinkableHash,
     target_address: AnyLinkableHash,
@@ -66,7 +66,7 @@ pub fn validate_create_link_game(
 ) -> ExternResult<ValidateCallbackResult> {
     let action_hash = ActionHash::from(target_address);
     let record = must_get_valid_record(action_hash)?;
-    let _game_invite: crate::GameInvite = record
+    let _game_transcript: crate::GameTranscript = record
         .entry()
         .to_app_option()
         .map_err(|e| wasm_error!(e))?

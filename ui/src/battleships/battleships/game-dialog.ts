@@ -43,7 +43,7 @@ export class GameDialog extends LitElement {
   protected firstUpdated(): void {
     setInterval(() => {
       this._fetchGameState.run();
-    }, 5_000);
+    }, 1_000);
   }
 
   show() {

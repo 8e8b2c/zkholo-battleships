@@ -1,7 +1,27 @@
-use battleships_integrity::EntryTypes;
+use battleships_integrity::{get_game_turn, EntryTypes, GameTurn, Shot};
 use hdk::prelude::*;
 
-use crate::{get_entry_for_record, ship_deployment_proof::get_ship_deployment_proofs_for_invite};
+use crate::{
+    game_transcript::{
+        get_latest_game_transcript_revision, get_original_game_transcript_hash_for_game_invite,
+    },
+    get_entry_for_action, get_entry_for_record,
+    ship_deployment_proof::get_ship_deployment_proofs_for_invite,
+};
+
+#[derive(Serialize, Deserialize, SerializedBytes, Debug, Clone)]
+pub struct ShotOutcome {
+    shot: Shot,
+    pending: bool,
+    hit: bool,
+}
+
+#[derive(Serialize, Deserialize, SerializedBytes, Debug, Clone)]
+pub struct InterpretedTranscript {
+    turn: GameTurn,
+    shots_aimed_at_home: Vec<ShotOutcome>,
+    shots_aimed_at_away: Vec<ShotOutcome>,
+}
 
 #[derive(Serialize, Deserialize, SerializedBytes, Debug, Clone)]
 #[serde(tag = "type")]
@@ -9,22 +29,12 @@ pub enum GameState {
     AwaitingHomeDeployment,
     AwaitingAwayDeployment,
     AwaitingBothDeployments,
-    GameStarted,
-    Other,
+    GameStarted(InterpretedTranscript),
 }
 
 #[hdk_extern]
 pub fn get_game_state(game_invite_hash: ActionHash) -> ExternResult<GameState> {
-    let record = match get(game_invite_hash, GetOptions::default())? {
-        Some(record) => record,
-        None => {
-            return Err(wasm_error!(WasmErrorInner::Guest(String::from(
-                "Game invite not found"
-            ))))
-        }
-    };
-    let game_invite_action_hash = record.action_hashed().hash.clone();
-    let game_invite = match get_entry_for_record(&record)? {
+    let game_invite = match get_entry_for_action(&game_invite_hash)? {
         Some(EntryTypes::GameInvite(game_invite)) => game_invite,
         _ => {
             return Err(wasm_error!(WasmErrorInner::Guest(String::from(
@@ -32,7 +42,7 @@ pub fn get_game_state(game_invite_hash: ActionHash) -> ExternResult<GameState> {
             ))))
         }
     };
-    let deployments = get_ship_deployment_proofs_for_invite(game_invite_action_hash)?;
+    let deployments = get_ship_deployment_proofs_for_invite(game_invite_hash.clone())?;
     match deployments.len() {
         0 => return Ok(GameState::AwaitingBothDeployments),
         1 => {
@@ -56,24 +66,30 @@ pub fn get_game_state(game_invite_hash: ActionHash) -> ExternResult<GameState> {
             ))))
         }
     }
-    // if deployments.len() > 2 {
-    //     return wasm_error!(WasmErrorInner::Guest(String::from(
-    //         "Game invite has too many deployments"
-    //     )));
-    // }
-    // let my_agent_pub_key = agent_info()?.agent_latest_pubkey;
-    // let you_are_home = match &my_agent_pub_key {
-    //     &home_player => true,
-    //     &away_player => false,
-    //     _=> return wasm_error!(WasmErrorInner::Guest(String::from(
-    //         "You are not part of this game"
-    //     )))
-    // }
-    // let roles = deployments
-    //     .iter()
-    //     .map(|record| match record.action_hashed().author() {
-    //         &my_agent_pub_key => Role::You,
-    //         _ => Role::Unknown,
-    //     });
-    Ok(GameState::Other)
+    let original_game_transcript_hash =
+        match get_original_game_transcript_hash_for_game_invite(game_invite_hash)? {
+            Some(hash) => hash,
+            // Transcript not started - away player opens game
+            None => {
+                return Ok(GameState::GameStarted(InterpretedTranscript {
+                    turn: GameTurn::AwayShot,
+                    shots_aimed_at_home: Vec::new(),
+                    shots_aimed_at_away: Vec::new(),
+                }))
+            }
+        };
+    let game_transcript = match get_latest_game_transcript_revision(original_game_transcript_hash)?
+        .map(|record| get_entry_for_record(&record))
+    {
+        Some(Ok(Some(EntryTypes::GameTranscript(game_transcript)))) => game_transcript,
+        _ => {
+            return Err(wasm_error!(WasmErrorInner::Guest(
+                "Game Transcript not found".into()
+            )))
+        }
+    };
+    // for proof of
+    Ok(GameState::GameStarted {
+        turn: get_game_turn(&game_transcript),
+    })
 }

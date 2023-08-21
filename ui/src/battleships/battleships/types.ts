@@ -70,11 +70,26 @@ export interface ShipDeploymentProof {
   proof: string;
 }
 
+export type GameTurn =
+  | { type: 'AwayShot' }
+  | { type: 'HomeProof' }
+  | { type: 'HomeShot' }
+  | { type: 'AwayProof' };
+
 export type GameState =
   | { type: 'AwaitingBothDeployments' }
   | { type: 'AwaitingHomeDeployment' }
   | { type: 'AwaitingAwayDeployment' }
-  | { type: 'GameStarted' }
-  | { type: 'Other' };
+  | { type: 'GameStarted'; turn: GameTurn };
 
 export type ViewerRole = 'home' | 'away' | 'spectator' | 'unknown';
+
+export interface FireShotInput {
+  game_invite_hash: ActionHash;
+  shot: Shot;
+}
+
+export interface Shot {
+  x: number;
+  y: number;
+}
