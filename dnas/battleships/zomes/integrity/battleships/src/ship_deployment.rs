@@ -10,6 +10,7 @@ pub struct Ship {
 pub struct ShipDeployment {
     pub invite: ActionHash,
     pub ships: Vec<Ship>,
+    pub salt: String,
 }
 pub fn validate_create_ship_deployment(
     _action: EntryCreationAction,

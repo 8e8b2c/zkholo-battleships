@@ -93,7 +93,7 @@ export class CreateShipDeployment extends LitElement {
     );
   }
 
-  async provePlacement() {
+  async provePlacement(salt: string) {
     const ships = [
       this.ships['5']!,
       this.ships['4']!,
@@ -105,7 +105,7 @@ export class CreateShipDeployment extends LitElement {
       ship.y.toString(),
       ship.horizontal ? '1' : '0',
     ]);
-    const inputs = { nonce: '0', ships };
+    const inputs = { nonce: salt, ships };
     const { proof, publicSignals } = await groth16.fullProve(
       inputs,
       circuitWasm,
@@ -129,8 +129,11 @@ export class CreateShipDeployment extends LitElement {
 
   async createShipDeployment() {
     try {
-      const { proofStr, commitment } = await this.provePlacement();
-
+      const salt = Math.floor(
+        Math.random() * Number.MAX_SAFE_INTEGER
+      ).toString();
+      const { proofStr, commitment } = await this.provePlacement(salt);
+      // Could generate salt that uses whole field - but good enough for demo
       const shipDeployment: ShipDeployment = {
         invite: this.gameInviteHash,
         ships: [
@@ -140,6 +143,7 @@ export class CreateShipDeployment extends LitElement {
           this.ships['3_b']!,
           this.ships['2']!,
         ],
+        salt,
       };
       const privateRecord: Record = await this.client.callZome({
         cap_secret: null,

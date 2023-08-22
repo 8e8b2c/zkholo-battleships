@@ -51,6 +51,16 @@ export class GameDialog extends LitElement {
     dialog.show();
   }
 
+  close() {
+    const dialog = this.shadowRoot?.getElementById('dialog') as Dialog;
+    dialog.close();
+  }
+
+  get open() {
+    const dialog = this.shadowRoot?.getElementById('dialog') as Dialog;
+    return dialog.open;
+  }
+
   async getRole(gameInviteHash: ActionHash): Promise<ViewerRole> {
     const record: Record | undefined = await this.client.callZome({
       cap_secret: null,
@@ -102,7 +112,9 @@ export class GameDialog extends LitElement {
   }
 
   renderContent() {
-    if (!this.gameInviteHash) return html`<span>No game selected</span>`;
+    if (!this.gameInviteHash) {
+      return html`<span>No game selected</span>`;
+    }
 
     return this._fetchGameState.render({
       pending: () =>

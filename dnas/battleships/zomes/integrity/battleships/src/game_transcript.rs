@@ -6,6 +6,11 @@ pub struct Shot {
     pub x: usize,
     pub y: usize,
 }
+#[derive(Clone, PartialEq, Serialize, Deserialize, SerializedBytes, Debug)]
+pub struct ShotOutcome {
+    pub proof_hash: ActionHash,
+    pub hit: bool,
+}
 #[hdk_entry_helper]
 #[derive(Clone, PartialEq)]
 pub struct GameTranscript {
@@ -14,15 +19,17 @@ pub struct GameTranscript {
     pub away_player_deployment_proof: ActionHash,
     pub home_player_shots: Vec<Shot>,
     pub away_player_shots: Vec<Shot>,
-    pub home_player_hit_or_miss_proofs: Vec<ActionHash>,
-    pub away_player_hit_or_miss_proofs: Vec<ActionHash>,
+    pub home_player_hit_or_miss_proofs: Vec<ShotOutcome>,
+    pub away_player_hit_or_miss_proofs: Vec<ShotOutcome>,
 }
 pub fn validate_create_game_transcript(
     action: EntryCreationAction,
     game_transcript: GameTranscript,
 ) -> ExternResult<ValidateCallbackResult> {
     if matches!(action, EntryCreationAction::Update(..)) {
-        // No meaningful validation can be done until we have the original entry, therefore we a
+        // No meaningful validation can be done until we have the original entry, therefore we
+        // succeed to allow other validation to kick in down the road.
+        return Ok(ValidateCallbackResult::Valid);
     }
     if !game_transcript.home_player_shots.is_empty() {
         return Ok(ValidateCallbackResult::Invalid(
@@ -133,15 +140,15 @@ pub fn validate_update_game_transcript(
         }
         GameTurn::HomeShot => {
             // Step 3 - Home player should be adding a shot
-            if action.author != game_invite.away_player {
-                return Ok(ValidateCallbackResult::Invalid("Away player's turn".into()));
+            if action.author != game_invite.home_player {
+                return Ok(ValidateCallbackResult::Invalid("Home player's turn".into()));
             }
             validate_add_shot(game_transcript, original_game_transcript, true)
         }
         GameTurn::AwayProof => {
             // Step 4 - Away player should be adding a proof
             if action.author != game_invite.away_player {
-                return Ok(ValidateCallbackResult::Invalid("Home player's turn".into()));
+                return Ok(ValidateCallbackResult::Invalid("Away player's turn".into()));
             }
             validate_add_proof(
                 game_transcript,
@@ -218,7 +225,7 @@ pub fn get_game_turn(game_transcript: &GameTranscript) -> GameTurn {
 }
 
 fn additional_shot_is_valid(existing_shots: &[Shot], shot: &Shot) -> bool {
-    !shot_is_on_board(shot) && !existing_shots.contains(shot)
+    shot_is_on_board(shot) && !existing_shots.contains(shot)
 }
 
 fn validate_add_shot(
@@ -263,33 +270,39 @@ fn validate_add_proof(
     } else {
         &mut game_transcript.away_player_hit_or_miss_proofs
     };
-    let proof_hash = match changed_proofs.pop() {
-        Some(proof_hash) => proof_hash,
+    let shot_outcome = match changed_proofs.pop() {
+        Some(shot_outcome) => shot_outcome,
         None => {
             return Ok(ValidateCallbackResult::Invalid(
                 "Home player proof not found".into(),
             ))
         }
     };
-    let (hit_or_miss_proof, proof_author) = match must_get_valid_app_entry_and_author(proof_hash)? {
-        (EntryTypes::HitOrMissProof(hit_or_miss_proof), proof_author) => {
-            (hit_or_miss_proof, proof_author)
-        }
-        _ => {
-            return Ok(ValidateCallbackResult::Invalid(
-                "Provided hash is not for a Hit Or Miss Proof".into(),
-            ))
-        }
-    };
+    let (hit_or_miss_proof, proof_author) =
+        match must_get_valid_app_entry_and_author(shot_outcome.proof_hash)? {
+            (EntryTypes::HitOrMissProof(hit_or_miss_proof), proof_author) => {
+                (hit_or_miss_proof, proof_author)
+            }
+            _ => {
+                return Ok(ValidateCallbackResult::Invalid(
+                    "Provided hash is not for a Hit Or Miss Proof".into(),
+                ))
+            }
+        };
+    if shot_outcome.hit != hit_or_miss_proof.hit {
+        return Ok(ValidateCallbackResult::Invalid(
+            "Shot outcome inconsistent with proof".into(),
+        ));
+    }
     if proof_author != author {
         return Ok(ValidateCallbackResult::Invalid(
             "Provided proof is by a different author".into(),
         ));
     }
     let expected_deployment_proof = if is_by_home_player {
-        &game_transcript.away_player_deployment_proof
-    } else {
         &game_transcript.home_player_deployment_proof
+    } else {
+        &game_transcript.away_player_deployment_proof
     };
     // We don't interrogate whether the deployment commitment matches here since that will have
     // been done during proof creation validation. Therefore it is sufficient to test shallowly.
@@ -298,11 +311,15 @@ fn validate_add_proof(
             "Provided proof is for a different deployment".into(),
         ));
     }
+    let opponent_shots = if is_by_home_player {
+        &game_transcript.away_player_shots
+    } else {
+        &game_transcript.home_player_shots
+    };
     if &hit_or_miss_proof.shot
-        != game_transcript
-            .away_player_shots
+        != opponent_shots
             .last()
-            .expect("away_player_shots count is baseline + 1")
+            .expect("player_shots count is baseline + 1")
     {
         return Ok(ValidateCallbackResult::Invalid(
             "Provided proof is for a different shot".into(),

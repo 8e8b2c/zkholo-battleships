@@ -131,6 +131,24 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
                     original_action,
                     original_game_invite,
                 ),
+                (
+                    EntryTypes::GameTranscript(game_transcript),
+                    EntryTypes::GameTranscript(original_game_transcript),
+                ) => validate_update_game_transcript(
+                    action,
+                    game_transcript,
+                    original_action,
+                    original_game_transcript,
+                ),
+                (
+                    EntryTypes::HitOrMissProof(hit_or_miss_proof),
+                    EntryTypes::HitOrMissProof(original_hit_or_miss_proof),
+                ) => validate_update_hit_or_miss_proof(
+                    action,
+                    hit_or_miss_proof,
+                    original_action,
+                    original_hit_or_miss_proof,
+                ),
                 _ => Ok(ValidateCallbackResult::Invalid(
                     "Original and updated entry types must be the same".to_string(),
                 )),

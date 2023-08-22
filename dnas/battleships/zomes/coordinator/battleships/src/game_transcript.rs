@@ -22,6 +22,28 @@ pub fn create_game_transcript(game_transcript: GameTranscript) -> ExternResult<R
     )?;
     Ok(record)
 }
+fn update_game_transcript(
+    original_game_transcript_hash: ActionHash,
+    previous_game_transcript_hash: ActionHash,
+    game_transcript: GameTranscript,
+) -> ExternResult<Record> {
+    let updated_game_transcript_hash =
+        update_entry(previous_game_transcript_hash, &game_transcript)?;
+
+    create_link(
+        original_game_transcript_hash,
+        updated_game_transcript_hash.clone(),
+        LinkTypes::GameTranscriptUpdates,
+        (),
+    )?;
+    let record = get(updated_game_transcript_hash, GetOptions::default())?.ok_or(wasm_error!(
+        WasmErrorInner::Guest(String::from(
+            "Could not find the newly updated GameTranscript"
+        ))
+    ))?;
+    Ok(record)
+}
+
 #[hdk_extern]
 pub fn get_original_game_transcript_hash_for_game_invite(
     game_invite_hash: ActionHash,
@@ -153,21 +175,66 @@ fn fire_next_shot(
         }
     }
 
-    let updated_game_transcript_hash = update_entry(
-        game_transcript_record.action_hashed().hash.clone(),
-        &game_transcript,
-    )?;
-
-    create_link(
+    update_game_transcript(
         original_game_transcript_hash,
-        updated_game_transcript_hash.clone(),
-        LinkTypes::GameTranscriptUpdates,
-        (),
-    )?;
-    let record = get(updated_game_transcript_hash, GetOptions::default())?.ok_or(wasm_error!(
-        WasmErrorInner::Guest(String::from(
-            "Could not find the newly updated GameTranscript"
-        ))
-    ))?;
-    Ok(record)
+        game_transcript_record.action_hashed().hash.clone(),
+        game_transcript,
+    )
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct ProveHitOrMissInput {
+    game_invite_hash: ActionHash,
+    hit_or_miss_proof: HitOrMissProof,
+}
+
+#[hdk_extern]
+pub fn prove_hit_or_miss(input: ProveHitOrMissInput) -> ExternResult<Record> {
+    let original_game_transcript_hash =
+        match get_original_game_transcript_hash_for_game_invite(input.game_invite_hash.clone())? {
+            None => {
+                return Err(wasm_error!(WasmErrorInner::Guest(
+                    "Transcript not found".into()
+                )))
+            }
+            Some(original_game_transcript_hash) => original_game_transcript_hash,
+        };
+    let game_transcript_record = get_latest_game_transcript_revision(
+        original_game_transcript_hash.clone(),
+    )?
+    .ok_or(wasm_error!(WasmErrorInner::Guest(
+        "GameTranscript Record not found".into()
+    )))?;
+
+    let mut game_transcript = match get_entry_for_record(&game_transcript_record)? {
+        Some(EntryTypes::GameTranscript(transcript)) => transcript,
+        _ => {
+            return Err(wasm_error!(WasmErrorInner::Guest(
+                "Latest Game Transcript not found".into()
+            )))
+        }
+    };
+    let game_turn = get_game_turn(&game_transcript);
+    let outcomes_to_grow = match game_turn {
+        GameTurn::AwayProof => &mut game_transcript.away_player_hit_or_miss_proofs,
+        GameTurn::HomeProof => &mut game_transcript.home_player_hit_or_miss_proofs,
+        _ => {
+            return Err(wasm_error!(WasmErrorInner::Guest(
+                "Wrong time to prove".into()
+            )))
+        }
+    };
+    let hit_or_miss_proof_hash =
+        create_entry(&EntryTypes::HitOrMissProof(input.hit_or_miss_proof.clone()))?;
+    let shot_outcome = ShotOutcome {
+        hit: input.hit_or_miss_proof.hit,
+        proof_hash: hit_or_miss_proof_hash,
+    };
+    outcomes_to_grow.push(shot_outcome);
+
+    update_game_transcript(
+        original_game_transcript_hash,
+        game_transcript_record.action_hashed().hash.clone(),
+        game_transcript,
+    )
 }

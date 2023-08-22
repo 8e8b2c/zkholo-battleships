@@ -43,11 +43,11 @@ export class GameBoard extends LitElement {
         return html`<div></div>`;
       case 'ship':
         return html`<div
-          style="width: 100%; height: 100%; background-color: grey"
+          style="width: 100%; height: 100%; background-color: grey;"
         ></div>`;
       case 'miss':
         return html`<div
-          style="width: 100%; height: 100%; background-color: light-blue"
+          style="width: 100%; height: 100%; background-color: lightblue;"
         ></div>`;
       case 'hit':
         return html`<div
@@ -59,7 +59,7 @@ export class GameBoard extends LitElement {
         return html`<div>?</div>`;
       case 'invalid':
         return html`<div
-          style="width: 100%; height: 100%; background-color: red"
+          style="width: 100%; height: 100%; background-color: red;"
         ></div>`;
       default:
         return html`<div></div>`;
@@ -67,7 +67,7 @@ export class GameBoard extends LitElement {
   }
 
   render() {
-    return html` <div style="aspect-ratio: 1; width: 100%;">
+    return html` <div style="aspect-ratio: 1; width: 100%; user-select: none;">
       ${range(BOARD_SIZE).map(
         y =>
           html`<div style="width: 100%; height: 10%;">

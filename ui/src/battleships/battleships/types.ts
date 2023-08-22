@@ -59,6 +59,7 @@ export interface Ship {
 export interface ShipDeployment {
   invite: ActionHash;
   ships: Ship[];
+  salt: string;
 }
 
 export interface ShipDeploymentProof {
@@ -92,4 +93,33 @@ export interface FireShotInput {
 export interface Shot {
   x: number;
   y: number;
+}
+
+export interface ShotOutcome {
+  shot: Shot;
+  hit: boolean;
+  pending: boolean;
+}
+
+export interface GameTranscript {
+  invite: ActionHash;
+  home_player_deployment_proof: ActionHash;
+  away_player_deployment_proof: ActionHash;
+  home_player_shots: Shot[];
+  away_player_shots: Shot[];
+  home_player_hit_or_miss_proofs: ShotOutcome[];
+  away_player_hit_or_miss_proofs: ShotOutcome[];
+}
+
+export interface HitOrMissProof {
+  deployment_proof: ActionHash;
+  deployment_commitment: String;
+  shot: Shot;
+  hit: boolean;
+  proof: String;
+}
+
+export interface ProveHitOrMissInput {
+  game_invite_hash: ActionHash;
+  hit_or_miss_proof: HitOrMissProof;
 }

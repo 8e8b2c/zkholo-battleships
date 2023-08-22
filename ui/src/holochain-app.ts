@@ -31,6 +31,9 @@ export class HolochainApp extends LitElement {
     this.client = await AppAgentWebsocket.connect('', 'battleships');
 
     this.loading = false;
+
+    // Hacky work around due to being unable to detect dialog cancel event :-/
+    setInterval(() => this.checkDialogNeedsClearing(), 1_000);
   }
 
   showNewGameDialog() {
@@ -44,6 +47,17 @@ export class HolochainApp extends LitElement {
     const dialog = this.shadowRoot?.getElementById('game-dialog') as GameDialog;
     this.selectedGameInvite = e.detail.inviteHash;
     dialog.show();
+  }
+
+  checkDialogNeedsClearing() {
+    if (this.selectedGameInvite) {
+      const dialog = this.shadowRoot?.getElementById(
+        'game-dialog'
+      ) as GameDialog;
+      if (!dialog.open) {
+        this.selectedGameInvite = undefined;
+      }
+    }
   }
 
   render() {

@@ -40,3 +40,28 @@ pub fn get_ship_deployment_proofs_for_invite(
     let records: Vec<Record> = records.into_iter().flatten().collect();
     Ok(records)
 }
+
+#[hdk_extern]
+pub fn get_your_ship_deployment_proof_for_invite(
+    game_invite_action_hash: ActionHash,
+) -> ExternResult<Option<Record>> {
+    let links = get_links(game_invite_action_hash, LinkTypes::DeploymentProofs, None)?;
+    let get_input: Vec<GetInput> = links
+        .into_iter()
+        .map(|link| GetInput::new(ActionHash::from(link.target).into(), GetOptions::content()))
+        .collect();
+    let records = HDK.with(|hdk| hdk.borrow().get(get_input))?;
+    let your_pub_key = &agent_info()?.agent_latest_pubkey;
+    let mut records: Vec<Record> = records
+        .into_iter()
+        .flatten()
+        .filter(|record| record.action().author() == your_pub_key)
+        .collect();
+    if records.len() > 1 {
+        return Err(wasm_error!(WasmErrorInner::Guest(
+            "You have multiple deployment proofs".into()
+        )));
+    }
+
+    Ok(records.pop())
+}

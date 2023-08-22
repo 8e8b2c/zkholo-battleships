@@ -1,4 +1,4 @@
-use battleships_integrity::{get_game_turn, EntryTypes, GameTurn, Shot};
+use battleships_integrity::{get_game_turn, EntryTypes, GameTurn};
 use hdk::prelude::*;
 
 use crate::{
@@ -10,26 +10,12 @@ use crate::{
 };
 
 #[derive(Serialize, Deserialize, SerializedBytes, Debug, Clone)]
-pub struct ShotOutcome {
-    shot: Shot,
-    pending: bool,
-    hit: bool,
-}
-
-#[derive(Serialize, Deserialize, SerializedBytes, Debug, Clone)]
-pub struct InterpretedTranscript {
-    turn: GameTurn,
-    shots_aimed_at_home: Vec<ShotOutcome>,
-    shots_aimed_at_away: Vec<ShotOutcome>,
-}
-
-#[derive(Serialize, Deserialize, SerializedBytes, Debug, Clone)]
 #[serde(tag = "type")]
 pub enum GameState {
     AwaitingHomeDeployment,
     AwaitingAwayDeployment,
     AwaitingBothDeployments,
-    GameStarted(InterpretedTranscript),
+    GameStarted { turn: GameTurn },
 }
 
 #[hdk_extern]
@@ -71,11 +57,9 @@ pub fn get_game_state(game_invite_hash: ActionHash) -> ExternResult<GameState> {
             Some(hash) => hash,
             // Transcript not started - away player opens game
             None => {
-                return Ok(GameState::GameStarted(InterpretedTranscript {
+                return Ok(GameState::GameStarted {
                     turn: GameTurn::AwayShot,
-                    shots_aimed_at_home: Vec::new(),
-                    shots_aimed_at_away: Vec::new(),
-                }))
+                })
             }
         };
     let game_transcript = match get_latest_game_transcript_revision(original_game_transcript_hash)?
@@ -88,7 +72,6 @@ pub fn get_game_state(game_invite_hash: ActionHash) -> ExternResult<GameState> {
             )))
         }
     };
-    // for proof of
     Ok(GameState::GameStarted {
         turn: get_game_turn(&game_transcript),
     })
