@@ -43,6 +43,18 @@ export class HolochainApp extends LitElement {
     dialog.show();
   }
 
+  handleNewGame(e: CustomEvent) {
+    this.selectedGameInvite = e.detail.gameInviteHash;
+    const newGameDialog = this.shadowRoot?.getElementById(
+      'new-game-dialog'
+    ) as NewGameDialog;
+    newGameDialog.close();
+    const gameDialog = this.shadowRoot?.getElementById(
+      'game-dialog'
+    ) as GameDialog;
+    gameDialog.show();
+  }
+
   handleInviteSelect(e: CustomEvent) {
     const dialog = this.shadowRoot?.getElementById('game-dialog') as GameDialog;
     this.selectedGameInvite = e.detail.inviteHash;
@@ -67,7 +79,11 @@ export class HolochainApp extends LitElement {
       `;
 
     return html`
-      <new-game-dialog id="new-game-dialog"> </new-game-dialog>
+      <new-game-dialog
+        id="new-game-dialog"
+        @game-invite-created=${this.handleNewGame}
+      >
+      </new-game-dialog>
       <game-dialog .gameInviteHash=${this.selectedGameInvite} id="game-dialog">
       </game-dialog>
       <main>

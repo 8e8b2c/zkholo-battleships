@@ -26,6 +26,11 @@ export class NewGameDialog extends LitElement {
     dialog.show();
   }
 
+  close() {
+    const dialog = this.shadowRoot?.getElementById('dialog') as Dialog;
+    dialog.close();
+  }
+
   render() {
     const hashStr = encodeHashToBase64(this.client.myPubKey);
     const shortHashStr = hashStr.substring(0, 10);

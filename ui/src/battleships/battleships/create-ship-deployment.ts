@@ -51,6 +51,9 @@ export class CreateShipDeployment extends LitElement {
   @state()
   horizontal = false;
 
+  @state()
+  isSubmitting = false;
+
   firstUpdated() {
     if (this.gameInviteHash === undefined) {
       throw new Error(
@@ -128,6 +131,7 @@ export class CreateShipDeployment extends LitElement {
   }
 
   async createShipDeployment() {
+    this.isSubmitting = true;
     try {
       const salt = Math.floor(
         Math.random() * Number.MAX_SAFE_INTEGER
@@ -197,6 +201,7 @@ export class CreateShipDeployment extends LitElement {
       errorSnackbar.labelText = `Error creating the ship placements: ${e.data.data}`;
       errorSnackbar.show();
     }
+    this.isSubmitting = false;
   }
 
   liftShip(label: ShipLabel) {
@@ -278,7 +283,7 @@ export class CreateShipDeployment extends LitElement {
     return html` <mwc-snackbar id="create-error" leading> </mwc-snackbar>
 
       <div style="display: flex; flex-direction: column">
-        <span style="font-size: 18px">Create Ship Placements</span>
+        <span style="font-size: 18px">Arrange Ships</span>
         <game-board
           @cell-click=${this.handleCellClick}
           @cell-hover=${this.handleCellHover}
@@ -295,8 +300,8 @@ export class CreateShipDeployment extends LitElement {
         </div>
         <mwc-button
           raised
-          label="Create Ship Placements"
-          .disabled=${!this.isShipDeploymentValid()}
+          label="Deploy"
+          .disabled=${!this.isShipDeploymentValid() || this.isSubmitting}
           @click=${() => this.createShipDeployment()}
         ></mwc-button>
       </div>`;

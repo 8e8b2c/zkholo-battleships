@@ -28,6 +28,9 @@ export class CreateGameInvite extends LitElement {
   @state()
   opponent: AgentPubKey | undefined;
 
+  @state()
+  isSubmitting = false;
+
   isGameInviteValid() {
     return !!this.opponent;
   }
@@ -45,6 +48,7 @@ export class CreateGameInvite extends LitElement {
     if (!this.opponent) {
       throw new Error('opponent not set');
     }
+    this.isSubmitting = true;
     const gameInvite: GameInvite = {
       home_player: this.client.myPubKey,
       away_player: this.opponent,
@@ -75,6 +79,7 @@ export class CreateGameInvite extends LitElement {
       errorSnackbar.labelText = `Error creating the game invite: ${e.data.data}`;
       errorSnackbar.show();
     }
+    this.isSubmitting = false;
   }
 
   render() {
@@ -88,7 +93,7 @@ export class CreateGameInvite extends LitElement {
         <mwc-button
           raised
           label="Create Game Invite"
-          .disabled=${!this.isGameInviteValid()}
+          .disabled=${!this.isGameInviteValid() || this.isSubmitting}
           @click=${() => this.createGameInvite()}
         ></mwc-button>
       </div>`;

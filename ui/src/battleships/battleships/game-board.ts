@@ -67,7 +67,9 @@ export class GameBoard extends LitElement {
   }
 
   render() {
-    return html` <div style="aspect-ratio: 1; width: 100%; user-select: none;">
+    return html` <div
+      style="aspect-ratio: 1; width: 100%; user-select: none; border: solid 1px grey;"
+    >
       ${range(BOARD_SIZE).map(
         y =>
           html`<div style="width: 100%; height: 10%;">
