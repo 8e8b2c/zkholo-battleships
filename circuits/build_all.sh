@@ -17,6 +17,7 @@ for circuit in $CIRCUITS; do
   npx snarkjs powersoftau contribute pot12_0000.ptau pot12_0001.ptau --name="First contribution" -e="$(openssl rand -base64 20)"
   npx snarkjs powersoftau prepare phase2 pot12_0001.ptau pot12_final.ptau
   npx snarkjs groth16 setup ${circuit}.r1cs pot12_final.ptau ${circuit}_0000.zkey
+  # NB: This trusted setup isn't suitable for production usage
   npx snarkjs zkey contribute ${circuit}_0000.zkey ${circuit}_0001.zkey --name="Second contribution" -e="$(openssl rand -base64 20)"
   npx snarkjs zkey export verificationkey ${circuit}_0001.zkey verification_key.json
   cd ../..

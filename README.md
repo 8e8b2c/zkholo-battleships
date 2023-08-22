@@ -1,10 +1,12 @@
 # Battleships
 
+Circuits nabbed from https://github.com/kunalmodi/battlesnark/tree/master.
+
 ## Environment Setup
 
 > PREREQUISITE: set up the [holochain development environment](https://developer.holochain.org/docs/install/).
 
-Enter the nix shell by running this in the root folder of the repository: 
+Enter the nix shell by running this in the root folder of the repository:
 
 ```bash
 nix-shell
@@ -14,7 +16,7 @@ npm install
 **Run all the other instructions in this README from inside this nix-shell, otherwise they won't work**.
 
 ## Running 2 agents
- 
+
 ```bash
 npm start
 ```
@@ -42,7 +44,8 @@ This will also bring up the Holochain Playground for advanced introspection of t
 ## Packaging
 
 To package the web happ:
-``` bash
+
+```bash
 npm run package
 ```
 
@@ -52,6 +55,7 @@ You will also have its subcomponent `battleships.happ` in the same folder`.
 ## Documentation
 
 This repository is using these tools:
+
 - [NPM Workspaces](https://docs.npmjs.com/cli/v7/using-npm/workspaces/): npm v7's built-in monorepo capabilities.
 - [hc](https://github.com/holochain/holochain/tree/develop/crates/hc): Holochain CLI to easily manage Holochain development instances.
 - [@holochain/tryorama](https://www.npmjs.com/package/@holochain/tryorama): test framework.
