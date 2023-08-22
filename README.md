@@ -1,6 +1,15 @@
 # Battleships
 
+## Circuits
+
 Circuits nabbed from https://github.com/kunalmodi/battlesnark/tree/master.
+
+Circuits require [circom](https://docs.circom.io/getting-started/installation/) to compile.
+
+```
+cd circuits
+sh build_all.sh
+```
 
 ## Environment Setup
 
