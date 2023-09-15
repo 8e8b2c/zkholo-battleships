@@ -36,8 +36,7 @@ template BattleshipMove() {
   assert(guess[0] >= 0 && guess[0] < boardSize);
   assert(guess[1] >= 0 && guess[1] < boardSize);
 
-  // 2. validate the inputted ships matches the public hash (the player isn't cheating!)
-  // (note that the way we populate this has to be exactly the same as how we generate it above)
+  // 2. validate the inputted ships matches the public hash
   component poseidon = Poseidon(6);
   poseidon.inputs[0] <== nonce;
   for (var i = 0; i < 5; i++) {
